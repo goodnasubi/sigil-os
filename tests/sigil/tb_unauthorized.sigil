@@ -1,0 +1,14 @@
+module tests.sigil.tb_unauthorized
+  targets bare
+  trust base
+
+fn main(a: Int) -> Int
+  intent "未承認の trust base モジュール"
+  requires none
+  ensures none
+  effects none
+  unchecked "前提"
+{
+  let p = raw.addr_null();
+  return 0;
+}

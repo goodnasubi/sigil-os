@@ -1,0 +1,15 @@
+module tests.sigil.kernel_tb
+  targets bare
+  trust base
+
+fn kernel_heap_op(size: Int) -> Int
+  intent "確保器の原始操作を呼び出すカーネル信頼基盤モジュール"
+  requires size > 0
+  ensures result == 0
+  effects none
+  unchecked "確保器が初期化済みかつページ管理が有効"
+{
+  let p = raw.alloc(size, 8);
+  raw.free(p, size, 8);
+  return 0;
+}

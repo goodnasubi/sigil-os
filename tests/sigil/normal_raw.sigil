@@ -1,0 +1,13 @@
+module tests.sigil.normal_raw
+  targets bare
+  trust none
+
+fn main(a: Int) -> Int
+  intent "通常モジュールからの原始操作呼び出し"
+  requires none
+  ensures none
+  effects none
+{
+  let p = raw.addr_null();
+  return 0;
+}
