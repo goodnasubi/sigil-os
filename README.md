@@ -11,12 +11,18 @@ Sigil P6 の OS 本体・対象別プラットフォーム層・OS のビルド�
 ## P6-3 ESXi の最小機器（ADR 0054 決定 7）
 - [P6-3 検証記録](docs/p6-3-verification.md)
 
+## P6-4 組み込み実機（ADR 0054 決定 7）
+- [P6-4 組み込み実機の構成（要件の固定と機種選定の提案）](docs/p6-4-board.md)
+- [P6-4 検証記録（実機は未実施）](docs/p6-4-verification.md)
+
 x86-64 の GNU ツールチェーン、GNU-EFI、mtools、xorriso を使う。Debian 13 / Ubuntu 24.04
 では `build-essential binutils gnu-efi mtools xorriso qemu-system-x86 ovmf` が必要。
 
 ```sh
 make                          # build/loader.efi, build/kernel.elf, build/sigil-os.iso
-make check                    # 全試験（check-boot, check-kernel, check-p6-2, check-p6-3, check-sigil）
+make check                    # 全試験（check-boot, check-kernel, check-p6-2, check-p6-3, check-p6-4, check-sigil）
+make usb                      # build/sigil-os-usb.img（実機の USB メモリ用、GPT 付き）
+make check-p6-4               # P6-4 実機構成の USB 起動を QEMU で近似する試験（実機の代わりではない）
 make check-p6-3               # P6-3 最小機器 VM 起動試験（PVSCSI・VMXNET3）
 make check-p6-2               # P6-2 最小カーネル VM 起動試験
 make check-sigil              # Sigil コンパイラ検査（原始操作拒否・sigil spec 前提表示）

@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include "core.h"
 #include "device_test.h"
+#include "board_test.h"
 
 __attribute__((noreturn)) void kernel_entry(const struct boot_info *info)
 {
@@ -51,6 +52,9 @@ __attribute__((noreturn)) void kernel_entry(const struct boot_info *info)
     test_allocator_oom();
 
     serial_write("p6-2 minimal kernel: ALL CHECKS PASSED\r\n");
+
+    /* P6-4: 同じ境界の上で、メモリ初期化・割り込み・機器 1 種（COM1 の UART）を観測する */
+    run_p6_4_board_tests();
 
     /* P6-3 Device checks if devices are present */
     if (test_devices_present()) {
