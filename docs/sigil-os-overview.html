@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<title>sigil-os の違いと優位性</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f5; --surface:#ffffff; --surface2:#eef3f1; --ink:#16211d; --muted:#5a6b64;
+  --line:#d3ddd8; --teal:#0b7a68; --teal-soft:#dff2ec; --teal-ink:#075e50;
+  --amber:#b45309; --amber-soft:#fdf0dc; --amber-line:#e8c07a;
+  --navy:#23405a; --navy-soft:#e3ebf2; --red:#b3372e; --red-soft:#fbe7e4;
+  --green:#2f7d32; --green-soft:#e2f1e2;
+  --shadow:0 10px 30px rgba(20,40,32,.08);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#101613; --surface:#1a221e; --surface2:#222c27; --ink:#e8efec; --muted:#a7b8b0;
+    --line:#33423b; --teal:#3ec9ae; --teal-soft:#173d34; --teal-ink:#8fe3cf;
+    --amber:#f0b45a; --amber-soft:#3d2f16; --amber-line:#7a5c22;
+    --navy:#8fb6d9; --navy-soft:#22364a; --red:#f0928a; --red-soft:#42211e;
+    --green:#8fd694; --green-soft:#1e3822;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;line-height:1.75;font-size:16px}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:.92em}
+a{color:var(--teal-ink)}
+button{font:inherit;cursor:pointer;min-height:44px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 18px 64px}
+
+/* ---------- intro ---------- */
+.intro{padding:38px 0 8px}
+.intro h1{font-size:clamp(26px,5.4vw,42px);line-height:1.3;font-weight:900;margin:0 0 12px;letter-spacing:.01em}
+.intro h1 .accent{color:var(--teal)}
+.lede{font-size:clamp(15px,2.6vw,18px);color:var(--muted);max-width:46em;margin:0 0 22px}
+.lede strong{color:var(--ink)}
+.oneliner{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;display:flex;gap:16px;align-items:flex-start}
+.oneliner .mark{flex:none;width:44px;height:44px;border-radius:10px;background:var(--teal);color:#fff;display:grid;place-items:center;font-weight:900;font-size:20px}
+.oneliner p{margin:0;font-size:15.5px}
+.oneliner p b{color:var(--teal-ink)}
+.howto{margin:14px 2px 0;font-size:13.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.howto .chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;min-height:32px}
+
+/* ---------- key points ---------- */
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 6px}
+.key{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;text-align:left;width:100%;color:var(--ink);transition:border-color .15s, transform .15s}
+.key:hover,.key:focus-visible{border-color:var(--teal);transform:translateY(-2px)}
+.key .num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--teal);font-weight:600;letter-spacing:.08em}
+.key h3{margin:6px 0 6px;font-size:17px;line-height:1.45}
+.key p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.65}
+.key .more{margin-top:10px;font-size:12.5px;color:var(--teal-ink);font-weight:700}
+
+/* ---------- figure sections ---------- */
+section.fig{margin-top:52px}
+.fig-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.fig-tag{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;letter-spacing:.1em;color:#fff;background:var(--navy);border-radius:6px;padding:3px 10px}
+@media (prefers-color-scheme: dark){.fig-tag{color:#0e1620}}
+.fig-head h2{font-size:clamp(20px,4vw,27px);margin:0;line-height:1.4;font-weight:900}
+.fig-sub{color:var(--muted);font-size:14.5px;margin:0 0 18px;max-width:52em}
+.fig-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:16px;align-items:start}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.panel{background:var(--surface);border:1px solid var(--teal);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;position:sticky;top:14px;min-height:220px}
+.panel .p-kicker{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.1em;color:var(--teal);font-weight:600}
+.panel h3{margin:6px 0 8px;font-size:18px;line-height:1.5}
+.panel p{margin:0 0 10px;font-size:14.5px;line-height:1.8}
+.panel p:last-child{margin-bottom:0}
+.panel ul{margin:0 0 10px;padding-left:1.2em;font-size:14.5px;line-height:1.8}
+.panel .p-note{background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--muted)}
+.panel:empty::before{content:"図の要素を選ぶと、ここに詳しい説明が表示されます。";color:var(--muted);font-size:14px}
+
+/* diagram nodes */
+.node{display:block;width:100%;text-align:left;background:var(--surface2);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);transition:border-color .15s, background .15s;line-height:1.5}
+.node:hover{border-color:var(--teal)}
+.node.selected{border-color:var(--teal);background:var(--teal-soft);box-shadow:0 0 0 2px var(--teal-soft)}
+.node .n-title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.node .n-desc{font-size:12.5px;color:var(--muted);margin-top:2px}
+.badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 9px;line-height:1.7}
+.badge.trust{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-line)}
+.badge.none{background:var(--teal-soft);color:var(--teal-ink);border:1px solid var(--teal)}
+.badge.done{background:var(--green-soft);color:var(--green);border:1px solid var(--green)}
+.badge.doing{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-line)}
+.badge.todo{background:var(--surface);color:var(--muted);border:1px solid var(--line)}
+.arrow{display:flex;justify-content:center;color:var(--muted);font-size:18px;line-height:1;padding:5px 0}
+.layer-label{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px;font-weight:600}
+.layer-label:first-child{margin-top:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.zone{border:1.5px dashed var(--amber-line);background:var(--amber-soft);border-radius:12px;padding:12px;margin-top:4px}
+.zone .zone-title{font-weight:700;font-size:13.5px;color:var(--amber);margin-bottom:8px}
+.zone .node{background:var(--surface)}
+.safezone{border:1.5px dashed var(--teal);border-radius:12px;padding:12px;margin-top:12px}
+.safezone .zone-title{font-weight:700;font-size:13.5px;color:var(--teal-ink);margin-bottom:8px}
+.side-note{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.7}
+
+/* comparison bars */
+.cmp-row{margin-bottom:16px}
+.cmp-row:last-child{margin-bottom:0}
+.cmp-head{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;font-weight:700;margin-bottom:5px;flex-wrap:wrap}
+.cmp-head .scale{font-weight:500;color:var(--muted);font-size:12.5px}
+.bar{height:26px;border-radius:7px;background:var(--surface2);border:1px solid var(--line);overflow:hidden;display:flex}
+.bar button{border:0;border-radius:0;min-height:0;padding:0;height:100%}
+.bar .fill-trust{background:repeating-linear-gradient(45deg,var(--amber) 0 10px,#c98a2e 10px 20px);opacity:.85}
+.bar .fill-rest{background:var(--teal-soft)}
+.bar button.selected{outline:3px solid var(--teal);outline-offset:-3px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:16px;height:16px;border-radius:4px;display:inline-block}
+.sw.a{background:var(--amber)}
+.sw.t{background:var(--teal-soft);border:1px solid var(--teal)}
+.mini-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+
+/* flow (fig3 / fig4) */
+.flow{display:flex;flex-direction:column}
+.flow-h{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:6px;align-items:stretch}
+.flow-h .arrow{align-items:center;padding:0}
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.branch .node.allow{border-color:var(--green)}
+.branch .node.deny{border-color:var(--red)}
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;position:relative}
+.divider{border:0;border-top:1px solid var(--line);margin:20px 0}
+
+/* tooltip */
+#tooltip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.6;border-radius:8px;padding:8px 12px;max-width:280px;opacity:0;transition:opacity .12s;box-shadow:var(--shadow)}
+#tooltip.show{opacity:1}
+#tooltip .tt-more{display:block;opacity:.75;font-size:11.5px;margin-top:2px}
+
+/* not-scope / footer */
+.notscope{margin-top:52px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px}
+.notscope h2{font-size:18px;margin:0 0 8px}
+.notscope p{margin:0;font-size:14.5px;color:var(--muted)}
+.notscope .items{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.notscope .items span{border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:13.5px;text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:18px;font-size:13.5px;color:var(--muted)}
+footer ul{margin:6px 0 0;padding-left:1.2em;line-height:2}
+footer a{font-weight:600;word-break:break-all}
+
+@media (max-width:860px){
+  .keys{grid-template-columns:1fr}
+  .fig-layout{grid-template-columns:1fr}
+  .panel{position:static}
+  .grid3,.timeline{grid-template-columns:1fr 1fr}
+  .flow-h{grid-template-columns:1fr}
+  .flow-h .arrow{transform:rotate(90deg);padding:2px 0}
+}
+@media (max-width:520px){
+  .grid2,.grid3,.mini-cards,.branch,.timeline{grid-template-columns:1fr}
+  .diagram{padding:14px}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .key{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= 導入 ================= -->
+  <header class="intro">
+    <h1>sigil-os は、ほかの OS と<br>何が<span class="accent">違う</span>のか</h1>
+    <p class="lede"><strong>sigil-os</strong> は、プログラミング言語 <strong>Sigil</strong> で書かれた OS 本体です。目指すのは汎用 OS の置き換えではなく、<strong>「信用しなければならない部分」をできるだけ小さくし、その範囲をすべて列挙できる</strong> OS です。このページでは、その違いと優位性を4枚の図で説明します。</p>
+    <div class="oneliner">
+      <div class="mark">S</div>
+      <p>ひと言でいうと ―― 一般的な OS ではカーネル全体が事実上の信頼対象になりますが、sigil-os では信頼が必要なのは <b>原始操作（<span class="mono">raw.*</span>）とローダーなど、ごく限られた部分だけ</b>。残りはすべて、言語の型と効果による通常の検査が効く <b><span class="mono">trust none</span></b> の世界で実装します。</p>
+    </div>
+    <p class="howto">
+      <span class="chip">🖱 図の要素にマウスオーバー → 要点がツールチップで表示</span>
+      <span class="chip">👆 クリック／タップ → 右（下）の詳細パネルに詳しい説明</span>
+    </p>
+  </header>
+
+  <!-- ================= 要点3つ ================= -->
+  <div class="keys" role="group" aria-label="3つの違い">
+    <button class="key" data-goto="fig1" data-select="raw">
+      <span class="num">DIFFERENCE 01</span>
+      <h3>信頼基盤が小さく、全部を列挙できる</h3>
+      <p>信頼が要るのは原始操作とローダーなどだけ。それは <span class="mono">raw.*</span> の表に、前提つきで登録されます。</p>
+      <span class="more">図1で見る →</span>
+    </button>
+    <button class="key" data-goto="fig2" data-select="effects">
+      <span class="num">DIFFERENCE 02</span>
+      <h3>「何が何をできるか」が型と効果で見える</h3>
+      <p>機器 I/O や割り込み制御などの作用と権限が、実行前にコードの型として表れます。</p>
+      <span class="more">図2で見る →</span>
+    </button>
+    <button class="key" data-goto="fig3" data-select="bootcontract">
+      <span class="num">DIFFERENCE 03</span>
+      <h3>ホスト環境に依存しない</h3>
+      <p>静的 ELF カーネル＋UEFI ローダー。起動の約束事（起動契約）が明示され、ホスト OS の仕組みに頼りません。</p>
+      <span class="more">図3で見る →</span>
+    </button>
+  </div>
+
+  <!-- ================= 図1 全体構造 ================= -->
+  <section class="fig" id="fig1">
+    <div class="fig-head"><span class="fig-tag">図 1</span><h2>全体構造 ― 1枚で見る sigil-os</h2></div>
+    <p class="fig-sub">上から下へ、起動する側 → カーネル → 標準ライブラリ → サービスの順に並んでいます。色の違いが「信頼が要るかどうか」の境界です。プラットフォーム固有の処理は右端ではなく、この図の中の「プラットフォーム層」に分離されています。</p>
+    <div class="fig-layout">
+      <div class="diagram" data-diagram="d1">
+        <p class="layer-label">起動する側</p>
+        <button class="node" data-key="loader" data-tip="UEFI ローダーの役割と、なぜカーネルと分離されているか"><span class="n-title">UEFI ローダー <span class="badge trust">信頼基盤</span></span><span class="n-desc">ELF を読み、メモリ領域を準備して、起動契約どおりにカーネルへ渡す</span></button>
+        <div class="arrow">↓</div>
+        <button class="node" data-key="bootcontract" data-tip="入口 ABI・スタック・起動情報の版／所有権／寿命を定めた約束事"><span class="n-title">起動契約</span><span class="n-desc">入口の呼び出し規約、スタック、CPU 初期状態、起動情報の受け渡しルール</span></button>
+        <div class="arrow">↓</div>
+
+        <p class="layer-label">カーネル ― 信頼が要る層（小さい）</p>
+        <div class="zone">
+          <div class="zone-title">⚠ 信頼基盤 ― 通常の検査では安全性を示せない部分だけ</div>
+          <button class="node" data-key="raw" data-tip="raw.* の表に、型・効果・requires・安全の前提つきで登録される原始操作"><span class="n-title"><span class="mono">raw.*</span> 原始操作 <span class="badge trust">信頼基盤</span></span><span class="n-desc">CPU 初期化／割り込み／ページ表／MMIO・DMA など</span></button>
+          <button class="node" style="margin-top:10px" data-key="runtime" data-tip="原始操作に不可欠なランタイム部品だけが信頼基盤に入る"><span class="n-title">不可欠なランタイム部品 <span class="badge trust">信頼基盤</span></span><span class="n-desc">原始操作とローダーを支える最小限の部品</span></button>
+        </div>
+
+        <p class="layer-label">カーネル ― 通常の検査が効く層（大きい）</p>
+        <div class="safezone">
+          <div class="zone-title">✓ <span class="mono">trust none</span> ― 型付きの境界の内側で実装</div>
+          <div class="grid2">
+            <button class="node" data-key="driver" data-tip="ドライバの状態管理やキュー処理は trust none で書ける"><span class="n-title">ドライバ</span><span class="n-desc">状態管理・キュー処理など</span></button>
+            <button class="node" data-key="resource" data-tip="カーネルの資源配分も型と効果の検査の対象になる"><span class="n-title">資源配分</span><span class="n-desc">メモリや機器などの割り当て判断</span></button>
+          </div>
+        </div>
+
+        <p class="layer-label">プラットフォーム境界</p>
+        <div class="grid2">
+          <button class="node" data-key="shared" data-tip="カーネルの共有部分には、起動情報と機器操作の型付き契約を置く"><span class="n-title">共有部分（型付き契約）</span><span class="n-desc">起動情報・機器操作の契約</span></button>
+          <button class="node" data-key="platform" data-tip="最初の受入対象は UEFI の x86-64 ESXi VM。KVM 系（virtio）は後続対象"><span class="n-title">プラットフォーム層</span><span class="n-desc">機器の発見・設定、ハードウェア固有処理（対象：ESXi）</span></button>
+        </div>
+
+        <p class="layer-label">標準ライブラリ ― 3層</p>
+        <div class="grid3">
+          <button class="node" data-key="libcore" data-tip="スカラー値・Option・Result。メモリ確保なしで、初期ブートから使える"><span class="n-title">(a) 確保不要の核</span><span class="n-desc">スカラー値、<span class="mono">Option</span>、<span class="mono">Result</span></span></button>
+          <button class="node" data-key="liballoc" data-tip="List・String など。確保器（アロケータ）の初期化後に使える"><span class="n-title">(b) 確保依存の核</span><span class="n-desc"><span class="mono">List</span>、<span class="mono">String</span> など</span></button>
+          <button class="node" data-key="libsvc" data-tip="ファイルや通信など、OS の機能を使う層"><span class="n-title">(c) OS サービス層</span><span class="n-desc">ファイル、通信など</span></button>
+        </div>
+        <p class="side-note">依存の向き（下の層が上の層に頼らないこと）はビルドで検査されます。OS サービスはこの標準ライブラリの上に乗り、カーネルが提供する機能としてアプリケーションから使われます。</p>
+      </div>
+      <aside class="panel" data-panel="d1" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ================= 図2 信頼範囲の比較 ================= -->
+  <section class="fig" id="fig2">
+    <div class="fig-head"><span class="fig-tag">図 2</span><h2>信頼範囲の比較 ― 何を信用しなければならないか</h2></div>
+    <p class="fig-sub">バーの色つき部分が「正しさを信用するしかない範囲」のイメージです（規模の比率を表す実測値ではありません）。設計方針の違いとして読んでください。各 OS 名やバーをクリックすると、方針の違いがパネルに表示されます。</p>
+    <div class="fig-layout">
+      <div class="diagram" data-diagram="d2">
+        <div class="cmp-row">
+          <div class="cmp-head"><span>一般的な OS（Linux 等）</span><span class="scale">カーネル全体が事実上の信頼対象</span></div>
+          <div class="bar"><button class="fill-trust" style="width:100%" data-key="linux" data-tip="C で書かれた巨大なカーネル全体が、事実上まるごと信頼対象になる" aria-label="Linux 等：カーネル全体が信頼対象"></button></div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-head"><span>Rust 製 OS（Redox、Tock 等）</span><span class="scale">メモリ安全性は言語で得られる</span></div>
+          <div class="bar"><button class="fill-trust" style="width:55%" data-key="rustos" data-tip="メモリ安全性は言語が担う。ただし作用・権限の可視化は別の話" aria-label="Rust 製 OS"></button><button class="fill-rest" style="width:45%" data-key="rustos" data-tip="メモリ安全性は言語が担う。ただし作用・権限の可視化は別の話" aria-label="Rust 製 OS（言語で検査できる部分）"></button></div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-head"><span>seL4 のような形式検証済みカーネル</span><span class="scale">正しさを「証明」で保証する</span></div>
+          <div class="bar"><button class="fill-trust" style="width:22%" data-key="sel4" data-tip="小さなカーネルの正しさを数学的な証明で保証するアプローチ" aria-label="seL4"></button><button class="fill-rest" style="width:78%" data-key="sel4" data-tip="小さなカーネルの正しさを数学的な証明で保証するアプローチ" aria-label="seL4（証明の対象外・利用側）"></button></div>
+        </div>
+        <div class="cmp-row">
+          <div class="cmp-head"><span>sigil-os</span><span class="scale">言語の検査で境界を小さく保ち、証明は将来に備える</span></div>
+          <div class="bar"><button class="fill-trust" style="width:16%" data-key="sigilos" data-tip="信頼基盤は raw.* とローダーなどだけ。残りは trust none" aria-label="sigil-os の信頼基盤"></button><button class="fill-rest" style="width:84%" data-key="sigilos" data-tip="信頼基盤は raw.* とローダーなどだけ。残りは trust none" aria-label="sigil-os の trust none の部分"></button></div>
+        </div>
+        <div class="legend"><span><i class="sw a"></i>信用するしかない範囲</span><span><i class="sw t"></i>言語の検査が効く／対象外の範囲</span></div>
+
+        <div class="mini-cards">
+          <button class="node" data-key="effects" data-tip="機器 I/O・割り込み制御・アドレス空間操作は専用の効果カテゴリで表される"><span class="n-title">効果（effect）の可視化</span><span class="n-desc">「そのコードが外部に何をするか」が型に表れる</span></button>
+          <button class="node" data-key="capability" data-tip="機器操作は P6 用の明示した出力プロファイルと能力の境界の中に閉じる"><span class="n-title">能力の境界</span><span class="n-desc">通常モジュールからの原始操作は処理系が拒否する</span></button>
+        </div>
+      </div>
+      <aside class="panel" data-panel="d2" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ================= 図3 起動の流れ ================= -->
+  <section class="fig" id="fig3">
+    <div class="fig-head"><span class="fig-tag">図 3</span><h2>起動の流れ ― 電源投入からサービスまで</h2></div>
+    <p class="fig-sub">ホスト OS に頼らずに起動する手順です。標準ライブラリの3層は「使えるようになる順番」がこの流れと対応しています。各ステップをクリックすると詳細が表示されます。</p>
+    <div class="fig-layout">
+      <div class="diagram" data-diagram="d3">
+        <div class="flow">
+          <button class="node" data-key="uefi" data-tip="マシンのファームウェア（UEFI）がローダーを起動する"><span class="n-title">1. UEFI ファームウェア</span><span class="n-desc">マシンの起動機構がローダーを読み込む</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="loader2" data-tip="ローダーが静的 ELF カーネルを読み、メモリ領域を準備する"><span class="n-title">2. ローダーが ELF を読む</span><span class="n-desc">x86-64 の静的 ELF カーネルを読み、メモリ領域を準備</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="exitbs" data-tip="UEFI ブートサービスを終了し、以降はカーネルがマシンを引き継ぐ"><span class="n-title">3. UEFI ブートサービス終了</span><span class="n-desc">ファームウェアの助けを離れ、カーネルの世界へ</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="bootcontract" data-tip="入口 ABI・スタック・CPU 初期状態・起動情報の版／所有権／寿命に従って制御を渡す"><span class="n-title">4. 起動契約に従って入口へ</span><span class="n-desc">入口 ABI、スタック、CPU 初期状態、起動情報を引き渡す</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="libcore" data-tip="確保不要の核（スカラー値・Option・Result）は初期ブートから使える"><span class="n-title">5. 確保不要の核で始動</span><span class="n-desc">メモリ確保がまだ無い段階でも使える部品だけで進む</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="allocinit" data-tip="確保器（アロケータ）を初期化すると、確保に依存する部品が使えるようになる"><span class="n-title">6. 確保器の初期化</span><span class="n-desc">動的なメモリ確保が使えるようになる転換点</span></button>
+          <div class="arrow">↓</div>
+          <div class="grid2">
+            <button class="node" data-key="liballoc" data-tip="List・String など、確保に依存する核が使えるようになる"><span class="n-title">7a. 確保依存の核</span><span class="n-desc"><span class="mono">List</span>、<span class="mono">String</span> など</span></button>
+            <button class="node" data-key="libsvc" data-tip="ファイルや通信などの OS サービスが動き始める"><span class="n-title">7b. OS サービス</span><span class="n-desc">ファイル、通信など</span></button>
+          </div>
+        </div>
+        <p class="side-note">カーネルはホスト OS の ABI、Linux システムコール、動的リンカ、外部ランタイムのいずれにも依存しません（freestanding）。だからこそ、起動の約束事を起動契約として明示する必要があります。</p>
+      </div>
+      <aside class="panel" data-panel="d3" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ================= 図4 段取りと用途 ================= -->
+  <section class="fig" id="fig4">
+    <div class="fig-head"><span class="fig-tag">図 4</span><h2>段取りと用途 ― いまどこまで来て、何に使うか</h2></div>
+    <p class="fig-sub">上段が開発の段取り（P6-1〜P6-4）、下段がその先の想定用途である safety monitor の働きです。どちらも要素をクリックすると詳細が表示されます。</p>
+    <div class="fig-layout">
+      <div class="diagram" data-diagram="d4">
+        <p class="layer-label">段取り ― P6 の進捗</p>
+        <div class="timeline">
+          <button class="node" data-key="p61" data-tip="出力と起動契約 ― 完了"><span class="n-title">P6-1 <span class="badge done">完了</span></span><span class="n-desc">出力と起動契約</span></button>
+          <button class="node" data-key="p62" data-tip="ESXi の最小カーネル ― 完了。通常モジュールからの原始操作の拒否も試験で確認"><span class="n-title">P6-2 <span class="badge done">完了</span></span><span class="n-desc">ESXi の最小カーネル</span></button>
+          <button class="node" data-key="p63" data-tip="PVSCSI ストレージと VMXNET3 ネットワーク ― 進行中"><span class="n-title">P6-3 <span class="badge doing">進行中</span></span><span class="n-desc">ESXi の最小機器</span></button>
+          <button class="node" data-key="p64" data-tip="x86-64 組み込み実機への展開 ― 今後"><span class="n-title">P6-4 <span class="badge todo">今後</span></span><span class="n-desc">x86-64 組み込み実機</span></button>
+        </div>
+
+        <hr class="divider">
+        <p class="layer-label">用途 ― safety monitor の働き（長期的な想定）</p>
+        <div class="flow">
+          <button class="node" data-key="aiout" data-tip="AI の判断は、型付きの入力として sigil-os 側に渡される"><span class="n-title">AI の出力</span><span class="n-desc">AI の判断を、型付きの入力として受け取る</span></button>
+          <div class="arrow">↓</div>
+          <button class="node" data-key="verify" data-tip="鮮度・範囲・許可された動作かどうかを検証する"><span class="n-title">sigil-os が検証する</span><span class="n-desc">鮮度／範囲／許可された動作か、をチェック</span></button>
+          <div class="arrow">↓</div>
+          <div class="branch">
+            <button class="node allow" data-key="allow" data-tip="条件を満たす出力は、上位の監督部へ渡す。最終判断と実行の権限は監督部が持つ"><span class="n-title">✓ 検証を通過 → 監督部へ</span><span class="n-desc">条件を満たせば、上位の監督部へ渡す（最終権限は監督部）</span></button>
+            <button class="node deny" data-key="deny" data-tip="条件外の出力は拒否し、上位の監督部へ通知する。最終権限は監督部が持つ"><span class="n-title">✕ 拒否して通知</span><span class="n-desc">条件外なら止めて、上位の監督部へ知らせる</span></button>
+          </div>
+        </div>
+        <p class="side-note">この用途で効くのが図1・図2の性質です。「検証する側」自身の信頼基盤が小さく、その前提がすべて表に出ていることが、そのまま優位性になります。</p>
+      </div>
+      <aside class="panel" data-panel="d4" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ================= 対象外 ================= -->
+  <div class="notscope">
+    <h2>やらないことも、はっきり決めています</h2>
+    <p>sigil-os は汎用 OS の代替ではありません。以下は ADR で明示的に対象外とされています。対象を絞ることが、信頼基盤を小さく保つ前提になっています。</p>
+    <div class="items"><span>汎用 OS のアプリ互換</span><span>包括的な機器対応</span><span>GUI</span></div>
+  </div>
+
+  <footer>
+    <p>出典 ― このページの内容は、以下の設計決定記録とリポジトリに基づきます。</p>
+    <ul>
+      <li>ADR 0054（P6 の設計決定）: <a href="https://github.com/goodnasubi/sigil/blob/main/docs/decisions/0054-p6-os.md" target="_blank" rel="noopener">github.com/goodnasubi/sigil ― docs/decisions/0054-p6-os.md</a></li>
+      <li>sigil-os リポジトリ: <a href="https://github.com/goodnasubi/sigil-os" target="_blank" rel="noopener">github.com/goodnasubi/sigil-os</a></li>
+    </ul>
+    <p>進捗の表記（P6-1・P6-2 完了、P6-3 進行中、P6-4 は今後）は、このページを作成した時点のものです。</p>
+  </footer>
+</div>
+
+<div id="tooltip" role="tooltip"></div>
+
+<script>
+var DETAILS = {
+  loader:{fig:"図1 ― 全体構造",title:"UEFI ローダー（信頼基盤）",body:"<p>マシンのファームウェアである UEFI から起動を受け、x86-64 の静的 ELF 形式のカーネルを読み込み、必要なメモリ領域を準備する部品です。カーネル本体とは分離されています。</p><p>ローダーは「信頼基盤」に入ります。起動時の引き渡しは通常の検査では安全性を示せないため、最初から信頼する前提として明示され、その前提は起動契約として文書化されます。</p>"},
+  bootcontract:{fig:"起動の約束事",title:"起動契約",body:"<p>ローダーからカーネルへ制御を渡すときの約束事です。入口の呼び出し規約（入口 ABI）、スタック、CPU の初期状態、そして起動情報の<strong>版・所有権・寿命</strong>（どの版の情報を、誰が所有し、いつまで有効か）が定められています。</p><p class='p-note'>ホスト OS の仕組みに頼らない（freestanding）からこそ、この引き渡しを暗黙の了解にせず、契約として明示します。P6-1 でこの契約が確定し、完了しています。</p>"},
+  raw:{fig:"図1 ― 全体構造",title:"raw.* ― 原始操作の表（信頼基盤）",body:"<p>CPU 初期化、割り込み、ページ表、MMIO／DMA など、<strong>通常の検査では安全性を示せない原始操作</strong>は、すべて <span class='mono'>raw.*</span> の表に登録されます。</p><ul><li>各操作には、型・効果・検査できる <span class='mono'>requires</span>（前提条件）・安全の前提が付けられます</li><li>呼び出すモジュールは <span class='mono'>trust base</span> を宣言しなければなりません</li><li>外部モジュールが使うには <span class='mono'>--trust-base</span> の許可が必要です</li></ul><p class='p-note'>設計方針は「原始操作とローダーの仮定を、将来の形式検証に備えて、個別に列挙できる大きさに保つ」ことです。前提は <span class='mono'>sigil spec</span> でレビューできます。</p>"},
+  runtime:{fig:"図1 ― 全体構造",title:"不可欠なランタイム部品（信頼基盤）",body:"<p>信頼基盤に入るのは原始操作だけではありません。UEFI ローダーと起動時の引き渡し、そして原始操作に<strong>不可欠なランタイム部品</strong>も含まれます。</p><p>逆に言えば、それ以外のものは信頼基盤に入れません。信頼基盤を増やす差分は、許可リストと CI によって可視化される仕組みになっています。</p>"},
+  driver:{fig:"図1 ― 全体構造",title:"ドライバ（trust none）",body:"<p>ドライバのうち、状態管理やキュー処理といった部分は、通常の検査で表せる処理です。そのため原始操作とは型付きの境界を介して接続し、<span class='mono'>trust none</span>（追加の信頼を置かない）として実装されます。</p><p>機器そのものに触れる瞬間だけが原始操作で、それをいつ・どの順序で呼ぶかという判断は、型と効果の検査が効く側に置かれます。</p>"},
+  resource:{fig:"図1 ― 全体構造",title:"資源配分（trust none）",body:"<p>カーネルの資源配分 ―― メモリや機器などをどう割り当てるかの判断 ―― も、通常の検査で表せる部分として <span class='mono'>trust none</span> で実装されます。</p><p>一般的な OS ではカーネルのこうした部分も含めて全体が信頼対象になりますが、sigil-os では「検査が効く部分は、検査が効く側に置く」のが原則です。</p>"},
+  shared:{fig:"図1 ― 全体構造",title:"共有部分 ― 型付き契約",body:"<p>カーネルの共有部分には、対象プラットフォームによらない契約を置きます。具体的には、起動情報の契約と、機器操作の型付き契約です。</p><p>共有部分とプラットフォーム層を分けることで、対象が変わってもカーネルの中心は同じ契約のまま保てます。</p>"},
+  platform:{fig:"図1 ― 全体構造",title:"プラットフォーム層",body:"<p>機器の発見・設定や、ハードウェア固有の処理は、対象ごとのプラットフォーム層に置きます。共有部分の型付き契約の向こう側に、固有の事情を閉じ込める構造です。</p><ul><li>最初の受入対象: UEFI の x86-64 <strong>ESXi VM</strong></li><li>後続対象: KVM 系（<span class='mono'>virtio</span>）も、同じ境界で検証できる見込み</li></ul>"},
+  libcore:{fig:"標準ライブラリ",title:"(a) 確保不要の核",body:"<p>スカラー値、<span class='mono'>Option</span>、<span class='mono'>Result</span> など、動的なメモリ確保に依存しない部品の層です。</p><p>確保器（アロケータ）がまだ初期化されていない初期ブートの段階から使えます。起動直後のカーネルは、この層だけを頼りに処理を進めます。</p>"},
+  liballoc:{fig:"標準ライブラリ",title:"(b) 確保依存の核",body:"<p><span class='mono'>List</span> や <span class='mono'>String</span> など、動的なメモリ確保を必要とする部品の層です。確保器の初期化が済んだ後に使えるようになります。</p><p>「いつから使えるか」が層として分かれているため、ブートの早い段階で誤って確保依存の部品を使う事故を、依存関係の検査で防げます。</p>"},
+  libsvc:{fig:"標準ライブラリ",title:"(c) OS サービス層",body:"<p>ファイルや通信など、OS が提供する機能を使う層です。標準ライブラリの最上層に位置します。</p><p class='p-note'>3層の依存の向き ―― 下の層が上の層に依存しないこと ―― は、ビルドで検査されます。</p>"},
+  linux:{fig:"図2 ― 信頼範囲の比較",title:"一般的な OS（Linux 等）",body:"<p>一般的な OS では、C で書かれた巨大なカーネル全体が、事実上まるごと信頼対象になります。ドライバも資源配分も含め、カーネルの中で起きる不具合はシステム全体に及び得ます。</p><p>これは優劣の断定ではなく、出発点の違いです。汎用性と互換性を担う代わりに、信頼しなければならない範囲が大きくなります。</p>"},
+  rustos:{fig:"図2 ― 信頼範囲の比較",title:"Rust 製 OS（Redox、Tock 等）",body:"<p>Rust 製 OS は、メモリ安全性を言語の仕組みで得ています。これは sigil-os と方向が重なる部分です。</p><p>違いはその先です。「そのコードが外部に及ぼす作用や権限まで言語で可視化する」ことは、Sigil の効果システムの領分であり、sigil-os の側の違いとして位置づけられます。</p>"},
+  sel4:{fig:"図2 ― 信頼範囲の比較",title:"seL4 のような形式検証済みカーネル",body:"<p>seL4 に代表される形式検証済みマイクロカーネルは、小さなカーネルの正しさを数学的な証明で保証するアプローチを取ります。保証の強さでは最も進んだ路線です。</p><p>sigil-os は進め方が逆です。まず言語の検査で境界を小さく保ち、証明は後続の課題として将来に備えます。原始操作の前提を列挙できる大きさに保つ設計は、その将来の検証への布石です。</p>"},
+  sigilos:{fig:"図2 ― 信頼範囲の比較",title:"sigil-os の信頼範囲",body:"<p>信頼基盤に入るのは、UEFI ローダーと起動時の引き渡し、CPU 初期化・割り込み・ページ表・MMIO／DMA などの原始操作（<span class='mono'>raw.*</span>）、そしてそれに不可欠なランタイム部品だけです。</p><p>それ以外 ―― ドライバの状態管理やキュー処理、カーネルの資源配分 ―― はすべて <span class='mono'>trust none</span> で、型と効果による通常の検査の対象になります。</p>"},
+  effects:{fig:"図2 ― 信頼範囲の比較",title:"効果（effect）の可視化",body:"<p>機器 I/O、割り込み制御、アドレス空間操作といった「コードが外部に及ぼす作用」は、専用の効果カテゴリとして型に表れます。コードを読むだけで、そのモジュールが何をし得るかが分かります。</p><ul><li>効果カテゴリは個別の ADR を経て追加されます</li><li>利用者が勝手にカテゴリを追加することは禁止されています</li></ul><p>カテゴリの追加自体を設計決定の対象にすることで、「いつの間にか権限が広がっていた」という事態を防ぎます。</p>"},
+  capability:{fig:"図2 ― 信頼範囲の比較",title:"能力の境界と出力プロファイル",body:"<p>機器操作は、P6 用に明示した出力プロファイルと能力の境界の中に閉じられています。境界の外にある操作は、そのモジュールからは行えません。</p><p class='p-note'>通常のモジュールが原始操作を呼ぼうとすると、処理系が拒否します。この拒否が実際に働くことは、P6-2 の試験で確認済みです。</p>"},
+  uefi:{fig:"図3 ― 起動の流れ",title:"1. UEFI ファームウェア",body:"<p>起動の出発点は、マシンのファームウェアである UEFI です。UEFI が sigil-os のローダーを読み込んで実行します。</p><p>最初の受入対象は UEFI の x86-64 環境（ESXi VM）です。</p>"},
+  loader2:{fig:"図3 ― 起動の流れ",title:"2. ローダーが ELF を読む",body:"<p>ローダーは、x86-64 の静的 ELF 形式で用意されたカーネルを読み込み、メモリ領域を準備します。カーネルは静的 ELF なので、動的リンカは介在しません。</p>"},
+  exitbs:{fig:"図3 ― 起動の流れ",title:"3. UEFI ブートサービス終了",body:"<p>準備が整ったら、UEFI のブートサービスを終了します。この時点でファームウェアの提供する機能は使えなくなり、以降の制御はすべてカーネル側に移ります。</p>"},
+  allocinit:{fig:"図3 ― 起動の流れ",title:"6. 確保器の初期化",body:"<p>動的なメモリ確保を担う確保器（アロケータ）を初期化する転換点です。ここを境に、確保に依存する部品 ―― 標準ライブラリの (b) の層 ―― が使えるようになります。</p><p>それ以前の段階は、(a) 確保不要の核だけで処理を進める設計になっています。</p>"},
+  p61:{fig:"図4 ― 段取り",title:"P6-1 ― 出力と起動契約（完了）",body:"<p>最初の段です。画面等への出力と、ローダーからカーネルへの起動契約（入口 ABI、スタック、CPU 初期状態、起動情報の版・所有権・寿命）を確定させました。</p><p>Mac 上の仮想環境等で、試験用 ISO が起動することまで確認された段階です。</p>"},
+  p62:{fig:"図4 ― 段取り",title:"P6-2 ― ESXi の最小カーネル（完了）",body:"<p>ESXi 上で動く最小のカーネルを実装した段です。信頼基盤と <span class='mono'>trust none</span> の境界が、実際にコードとして成立しました。</p><p class='p-note'>この段の試験で、通常のモジュールが原始操作を呼ぶと処理系に拒否されることも確認済みです。</p>"},
+  p63:{fig:"図4 ― 段取り",title:"P6-3 ― ESXi の最小機器（進行中）",body:"<p>ESXi VM の実用的な機器を扱う段です。ストレージは PVSCSI、ネットワークは VMXNET3 が対象です。</p><p>ドライバの状態管理やキュー処理を <span class='mono'>trust none</span> で実装し、機器に触れる瞬間だけを原始操作に閉じる ―― という設計の実地検証が進んでいます。</p>"},
+  p64:{fig:"図4 ― 段取り",title:"P6-4 ― x86-64 組み込み実機（今後）",body:"<p>仮想環境から実機へ出る段です。x86-64 の組み込み実機を対象にします。</p><p>プラットフォーム層を分離した設計（図1）により、共有部分の契約はそのままに、実機固有の処理だけを差し替える形で進める想定です。</p>"},
+  aiout:{fig:"図4 ― 用途",title:"AI の出力（型付きの入力）",body:"<p>想定用途である safety monitor では、AI の判断は「自由な形式の命令」としてではなく、型付きの入力として sigil-os 側に渡されます。</p><p>型が付いていることで、次の検証ステップで「何をしようとしている出力か」を機械的に判定できます。</p>"},
+  verify:{fig:"図4 ― 用途",title:"検証 ― 鮮度・範囲・許可された動作",body:"<p>sigil-os 側は、受け取った AI の出力について次を検証します。</p><ul><li><strong>鮮度</strong>: その判断は古くなっていないか</li><li><strong>範囲</strong>: 値や対象が想定の範囲内か</li><li><strong>許可された動作</strong>: そもそも許可された操作かどうか</li></ul><p>この「検証する側」自身の信頼基盤が小さく、前提がすべて表に出ていることが、sigil-os を使う意味になります。</p>"},
+  allow:{fig:"図4 ― 用途",title:"検証を通過 ― 条件を満たす場合",body:"<p>鮮度・範囲・許可された動作の検証をすべて満たした出力は、上位の監督部へ渡されます。</p><p class='p-note'>sigil-os 自身が操作を実行するわけではありません。操作の最終判断と実行の権限は、上位の監督部が持ちます。sigil-os の役割は「検証して、条件外を通さない」ことに絞られています。</p>"},
+  deny:{fig:"図4 ― 用途",title:"拒否と通知 ― 条件外の場合",body:"<p>条件を満たさない出力は、その場で拒否されます。あわせて、上位の監督部へ通知されます。</p><p class='p-note'>操作の最終権限は、sigil-os ではなく上位の監督部が持ちます。sigil-os の役割は「検証して、条件外を通さない」ことに絞られています。</p>"}
+};
+
+function panelFor(el){
+  var d = el.closest("[data-diagram]");
+  if(!d) return null;
+  return document.querySelector('[data-panel="'+d.getAttribute("data-diagram")+'"]');
+}
+function showDetail(el){
+  var key = el.getAttribute("data-key");
+  var info = DETAILS[key];
+  var panel = panelFor(el);
+  if(!info || !panel) return;
+  var diagram = el.closest("[data-diagram]");
+  diagram.querySelectorAll(".selected").forEach(function(n){ n.classList.remove("selected"); });
+  diagram.querySelectorAll('[data-key="'+key+'"]').forEach(function(n){ n.classList.add("selected"); });
+  panel.innerHTML = "<div class='p-kicker'>"+info.fig+"</div><h3>"+info.title+"</h3>"+info.body;
+}
+document.querySelectorAll("[data-key]").forEach(function(el){
+  el.addEventListener("click", function(){ showDetail(el); });
+});
+/* 初期表示: 各図の代表要素 */
+[["d1","raw"],["d2","sigilos"],["d3","bootcontract"],["d4","verify"]].forEach(function(pair){
+  var el = document.querySelector('[data-diagram="'+pair[0]+'"] [data-key="'+pair[1]+'"]');
+  if(el) showDetail(el);
+});
+/* 要点カードからのジャンプ */
+document.querySelectorAll(".key[data-goto]").forEach(function(card){
+  card.addEventListener("click", function(){
+    var fig = document.getElementById(card.getAttribute("data-goto"));
+    if(fig) fig.scrollIntoView({behavior:"smooth", block:"start"});
+    var target = fig ? fig.querySelector('[data-key="'+card.getAttribute("data-select")+'"]') : null;
+    if(target) setTimeout(function(){ showDetail(target); }, 350);
+  });
+});
+/* ツールチップ */
+var tip = document.getElementById("tooltip");
+function moveTip(e){
+  var x = e.clientX + 14, y = e.clientY + 16;
+  var w = tip.offsetWidth, h = tip.offsetHeight;
+  if(x + w > window.innerWidth - 8) x = e.clientX - w - 10;
+  if(y + h > window.innerHeight - 8) y = e.clientY - h - 10;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+document.querySelectorAll("[data-tip]").forEach(function(el){
+  el.addEventListener("mouseenter", function(e){
+    tip.innerHTML = el.getAttribute("data-tip") + "<span class='tt-more'>クリックで詳細パネルに表示</span>";
+    tip.classList.add("show"); moveTip(e);
+  });
+  el.addEventListener("mousemove", moveTip);
+  el.addEventListener("mouseleave", function(){ tip.classList.remove("show"); });
+  el.addEventListener("focus", function(){
+    tip.innerHTML = el.getAttribute("data-tip") + "<span class='tt-more'>Enter で詳細パネルに表示</span>";
+    var r = el.getBoundingClientRect();
+    tip.classList.add("show");
+    tip.style.left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (r.bottom + 8) + "px";
+  });
+  el.addEventListener("blur", function(){ tip.classList.remove("show"); });
+});
+</script>
+</body>
+</html>
