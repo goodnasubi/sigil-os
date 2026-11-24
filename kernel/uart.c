@@ -12,6 +12,7 @@
 #define LSR_DATA_READY 0x01
 #define LSR_ERRORS     0x0e /* オーバーラン・パリティ・フレーミング */
 #define LSR_THR_EMPTY  0x20
+#define LSR_TX_EMPTY   0x40 /* TEMT: 送信 FIFO と送信シフトレジスタが両方空 */
 #define MCR_LOOPBACK   0x10
 #define MCR_OUT_BITS   0x0f
 
@@ -53,6 +54,17 @@ int uart16550_loopback_byte(uint16_t base, uint8_t tx, uint8_t *rx)
     if (!rx)
         return -1;
 
+    /*
+     * 直前のコンソール出力（serial_write は THRE しか見ない）がシフトレジスタに残ったまま
+     * ループバックへ切り替えると、末尾の文字が欠けたり、内部の受信へ回ったりする。
+     * MCR を変える前に、送信が完全に終わる（TEMT）のを上限つきで待つ。
+     */
+    unsigned int tries = 0;
+    while (!(reg_read(base, UART_LSR) & LSR_TX_EMPTY)) {
+        if (++tries >= UART_WAIT_TRIES)
+            return -1;
+    }
+
     uint8_t saved_ier = reg_read(base, UART_IER);
     uint8_t saved_mcr = reg_read(base, UART_MCR);
     int result = -1;
@@ -62,7 +74,7 @@ int uart16550_loopback_byte(uint16_t base, uint8_t tx, uint8_t *rx)
     reg_write(base, UART_MCR, (uint8_t)(MCR_LOOPBACK | MCR_OUT_BITS));
     drain(base);
 
-    unsigned int tries = 0;
+    tries = 0;
     while (!(reg_read(base, UART_LSR) & LSR_THR_EMPTY)) {
         if (++tries >= UART_WAIT_TRIES)
             goto restore;
