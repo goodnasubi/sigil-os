@@ -201,8 +201,11 @@ static void vmxnet3_quiesce_and_drain(struct vmxnet3_dev *dev, uint32_t send_idx
     dev->tx_ring[send_idx].addr = 0;
     dev->tx_ring[send_idx].len = 0;
 
-    /* Re-activate device for subsequent operations */
-    mmio_write32(dev->bar1 + VMXNET3_REG_CMD, VMXNET3_CMD_ACTIVATE_DEV);
+    /* Reinitialize ring state, software indexes/generations, and re-activate device.
+     * If reactivation fails, mark device uninitialized so subsequent calls fail. */
+    if (vmxnet3_reset_device(dev) != 0) {
+        dev->initialized = 0;
+    }
 }
 
 int vmxnet3_send_packet(struct vmxnet3_dev *dev, const void *buf, uint16_t len)
