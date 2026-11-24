@@ -1,0 +1,14 @@
+module tests.sigil.normal_unchecked
+  targets bare
+  trust none
+
+fn main(a: Int) -> Int
+  intent "trust none での unchecked 宣言"
+  requires none
+  ensures none
+  effects none
+  unchecked "前提"
+{
+  let p = raw.addr_null();
+  return 0;
+}

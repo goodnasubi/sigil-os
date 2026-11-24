@@ -6,9 +6,17 @@ FREESTANDING := -m64 -O2 -Wall -Wextra -Werror -ffreestanding -fno-builtin \
 	-mno-red-zone -mgeneral-regs-only
 EFI_FLAGS := -isystem $(EFI_INCLUDE) -isystem $(EFI_INCLUDE)/x86_64 \
 	-DGNU_EFI_USE_MS_ABI -fpic -fshort-wchar
+KERNEL_CFLAGS := $(FREESTANDING) -fno-pie -Iboot -Ikernel
 
-.PHONY: all images iso check-probe check-boot clean
-all: $(BUILD)/loader.efi
+KERNEL_OBJS := $(BUILD)/kernel_main.o \
+	$(BUILD)/kernel_page.o \
+	$(BUILD)/kernel_interrupt.o \
+	$(BUILD)/kernel_interrupt_entry.o \
+	$(BUILD)/kernel_alloc.o \
+	$(BUILD)/kernel_core.o
+
+.PHONY: all images iso check check-probe check-boot check-kernel check-p6-2 check-sigil clean
+all: $(BUILD)/loader.efi $(BUILD)/kernel.elf $(BUILD)/sigil-os.iso
 
 $(BUILD):
 	mkdir -p $@
@@ -38,6 +46,36 @@ $(BUILD)/probe.elf: $(BUILD)/probe.o tests/probe.ld
 check-probe: $(BUILD)/probe.elf
 	tests/check-probe.sh $<
 
+$(BUILD)/kernel_main.o: kernel/main.c boot/contract.h boot/serial.h kernel/page.h kernel/interrupt.h kernel/alloc.h kernel/core.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_page.o: kernel/page.c kernel/page.h boot/contract.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_interrupt.o: kernel/interrupt.c kernel/interrupt.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_interrupt_entry.o: kernel/interrupt_entry.S | $(BUILD)
+	$(CC) -m64 -c $< -o $@
+
+$(BUILD)/kernel_alloc.o: kernel/alloc.c kernel/alloc.h kernel/page.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_core.o: kernel/core.c kernel/core.h kernel/alloc.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel.elf: $(KERNEL_OBJS) tests/probe.ld
+	$(LD) -m elf_x86_64 -static --no-undefined -T tests/probe.ld $(KERNEL_OBJS) -o $@
+
+check-kernel: $(BUILD)/kernel.elf
+	tests/check-kernel.sh $<
+
+check-sigil:
+	tests/check-sigil.sh
+
+$(BUILD)/sigil-os.iso: $(BUILD)/loader.efi $(BUILD)/kernel.elf check-kernel
+	boot/make-iso.sh $(BUILD)/loader.efi $(BUILD)/kernel.elf $@
+
 images: $(BUILD)/loader.efi $(BUILD)/bad-info.efi check-probe
 	boot/make-iso.sh $(BUILD)/loader.efi $(BUILD)/probe.elf $(BUILD)/probe.iso
 	boot/make-iso.sh $(BUILD)/loader.efi $(BUILD)/loader.efi $(BUILD)/bad-elf.iso
@@ -45,6 +83,11 @@ images: $(BUILD)/loader.efi $(BUILD)/bad-info.efi check-probe
 
 check-boot: images
 	tests/check-boot.sh $(BUILD)
+
+check-p6-2: $(BUILD)/sigil-os.iso check-sigil
+	tests/check-p6-2.sh $(BUILD)
+
+check: check-boot check-kernel check-p6-2 check-sigil
 
 iso: $(BUILD)/loader.efi
 	test -n "$(KERNEL_ELF)" && test -f "$(KERNEL_ELF)"
