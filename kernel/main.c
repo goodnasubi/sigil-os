@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "alloc.h"
 #include "core.h"
+#include "device_test.h"
 
 __attribute__((noreturn)) void kernel_entry(const struct boot_info *info)
 {
@@ -50,5 +51,12 @@ __attribute__((noreturn)) void kernel_entry(const struct boot_info *info)
     test_allocator_oom();
 
     serial_write("p6-2 minimal kernel: ALL CHECKS PASSED\r\n");
+
+    /* P6-3 Device checks if devices are present */
+    if (test_devices_present()) {
+        run_p6_3_device_tests();
+        boot_stop("p6-3 kernel done\r\n");
+    }
+
     boot_stop("p6-2 kernel done\r\n");
 }
