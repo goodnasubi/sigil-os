@@ -286,6 +286,7 @@ int vmxnet3_receive_packet(struct vmxnet3_dev *dev, void *buf, uint16_t max_len,
         if (rcd->gen == dev->rx_comp_gen) {
             uint32_t rxd_idx = rcd->rxd_idx;
             uint16_t pkt_len = (uint16_t)rcd->len;
+            uint32_t err = rcd->err;
 
             dev->rx_comp_idx++;
             if (dev->rx_comp_idx >= VMXNET3_RING_SIZE) {
@@ -293,14 +294,16 @@ int vmxnet3_receive_packet(struct vmxnet3_dev *dev, void *buf, uint16_t max_len,
                 dev->rx_comp_gen ^= 1;
             }
 
-            uint16_t copy_len = pkt_len < max_len ? pkt_len : max_len;
-            const uint8_t *src = dev->rx_buffers[rxd_idx];
-            uint8_t *dst = (uint8_t *)buf;
-            for (uint16_t i = 0; i < copy_len; ++i)
-                dst[i] = src[i];
+            if (!err) {
+                uint16_t copy_len = pkt_len < max_len ? pkt_len : max_len;
+                const uint8_t *src = dev->rx_buffers[rxd_idx];
+                uint8_t *dst = (uint8_t *)buf;
+                for (uint16_t i = 0; i < copy_len; ++i)
+                    dst[i] = src[i];
 
-            if (out_len)
-                *out_len = pkt_len;
+                if (out_len)
+                    *out_len = pkt_len;
+            }
 
             /* Replenish Rx descriptor */
             uint32_t rx_idx = dev->rx_prod;
@@ -319,6 +322,9 @@ int vmxnet3_receive_packet(struct vmxnet3_dev *dev, void *buf, uint16_t max_len,
 
             /* Doorbell */
             mmio_write32(dev->bar0 + VMXNET3_REG_RXPROD, dev->rx_prod);
+
+            if (err)
+                continue;
 
             return 0;
         }
