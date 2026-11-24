@@ -133,7 +133,7 @@ int vmxnet3_init(struct vmxnet3_dev *dev)
     dev->tx_comp_gen = 1;
 
     dev->rx_prod = 0;
-    dev->rx_gen = 1;
+    dev->rx_gen = 0;
     dev->rx_comp_idx = 0;
     dev->rx_comp_gen = 1;
 
@@ -236,13 +236,22 @@ int vmxnet3_receive_packet(struct vmxnet3_dev *dev, void *buf, uint16_t max_len,
                 *out_len = pkt_len;
 
             /* Replenish Rx descriptor */
-            dev->rx_ring[rxd_idx].len = 1514;
-            dev->rx_ring[rxd_idx].btype = 0;
-            dev->rx_ring[rxd_idx].dtype = 0;
-            dev->rx_ring[rxd_idx].gen = dev->rx_gen;
+            uint32_t rx_idx = dev->rx_prod;
+            dev->rx_ring[rx_idx].len = 1514;
+            dev->rx_ring[rx_idx].btype = 0;
+            dev->rx_ring[rx_idx].dtype = 0;
+            __asm__ volatile("" : : : "memory");
+            dev->rx_ring[rx_idx].gen = dev->rx_gen;
+
+            rx_idx++;
+            if (rx_idx >= VMXNET3_RING_SIZE) {
+                rx_idx = 0;
+                dev->rx_gen ^= 1;
+            }
+            dev->rx_prod = rx_idx;
 
             /* Doorbell */
-            mmio_write32(dev->bar0 + VMXNET3_REG_RXPROD, rxd_idx);
+            mmio_write32(dev->bar0 + VMXNET3_REG_RXPROD, dev->rx_prod);
 
             return 0;
         }

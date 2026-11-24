@@ -104,32 +104,35 @@ static void test_vmxnet3(void)
     /* Target IP: 10.0.2.2 (QEMU gateway peer) */
     pkt[38] = 10; pkt[39] = 0; pkt[40] = 2; pkt[41] = 2;
 
-    /* Send packet */
-    if (vmxnet3_send_packet(&dev, pkt, 60) != 0)
-        boot_stop("STOP vmxnet3 send failed\r\n");
-
-    /* Receive ARP reply */
+    /* Send and receive ARP packets (> 32 to verify ring wraparound and rx_gen toggle) */
     uint8_t rx_buf[1514];
     uint16_t rx_len = 0;
-    if (vmxnet3_receive_packet(&dev, rx_buf, sizeof(rx_buf), &rx_len) != 0)
-        boot_stop("STOP vmxnet3 receive failed\r\n");
+    for (int iter = 0; iter < 35; ++iter) {
+        if (vmxnet3_send_packet(&dev, pkt, 60) != 0)
+            boot_stop("STOP vmxnet3 send failed\r\n");
 
-    if (rx_len < 42)
-        boot_stop("STOP vmxnet3 packet too short\r\n");
+        /* Receive ARP reply */
+        rx_len = 0;
+        if (vmxnet3_receive_packet(&dev, rx_buf, sizeof(rx_buf), &rx_len) != 0)
+            boot_stop("STOP vmxnet3 receive failed\r\n");
 
-    /* Validate ARP Reply:
-     * EtherType == 0x0806
-     * Opcode == 0x0002 (Reply)
-     * Sender IP == 10.0.2.2
-     */
-    if (rx_buf[12] != 0x08 || rx_buf[13] != 0x06)
-        boot_stop("STOP vmxnet3 ethertype not ARP\r\n");
+        if (rx_len < 42)
+            boot_stop("STOP vmxnet3 packet too short\r\n");
 
-    if (rx_buf[20] != 0x00 || rx_buf[21] != 0x02)
-        boot_stop("STOP vmxnet3 opcode not reply\r\n");
+        /* Validate ARP Reply:
+         * EtherType == 0x0806
+         * Opcode == 0x0002 (Reply)
+         * Sender IP == 10.0.2.2
+         */
+        if (rx_buf[12] != 0x08 || rx_buf[13] != 0x06)
+            boot_stop("STOP vmxnet3 ethertype not ARP\r\n");
 
-    if (rx_buf[28] != 10 || rx_buf[29] != 0 || rx_buf[30] != 2 || rx_buf[31] != 2)
-        boot_stop("STOP vmxnet3 reply not from peer\r\n");
+        if (rx_buf[20] != 0x00 || rx_buf[21] != 0x02)
+            boot_stop("STOP vmxnet3 opcode not reply\r\n");
+
+        if (rx_buf[28] != 10 || rx_buf[29] != 0 || rx_buf[30] != 2 || rx_buf[31] != 2)
+            boot_stop("STOP vmxnet3 reply not from peer\r\n");
+    }
 
     serial_write("vmxnet3 test send/receive: OK\r\n");
 

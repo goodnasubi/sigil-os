@@ -45,7 +45,7 @@ void pci_write_config16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset,
 
 int pci_find_device(uint16_t vendor_id, uint16_t device_id, struct pci_device *out_dev)
 {
-    for (uint16_t bus = 0; bus < 8; ++bus) {
+    for (uint16_t bus = 0; bus < 256; ++bus) {
         for (uint8_t slot = 0; slot < 32; ++slot) {
             for (uint8_t func = 0; func < 8; ++func) {
                 uint32_t id = pci_read_config32((uint8_t)bus, slot, func, 0);
