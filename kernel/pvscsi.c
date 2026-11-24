@@ -12,12 +12,100 @@ static inline uint32_t mmio_read32(uintptr_t addr)
     return *(volatile uint32_t *)addr;
 }
 
+static void pvscsi_write_cmd_desc(struct pvscsi_dev *dev, uint32_t cmd, const void *desc, size_t len)
+{
+    mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND, cmd);
+    if (desc && len > 0) {
+        for (size_t i = 0; i < len; i += 4) {
+            const uint8_t *src = (const uint8_t *)desc + i;
+            uint32_t word = (uint32_t)src[0] | ((uint32_t)src[1] << 8) |
+                           ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
+            mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND_DATA, word);
+        }
+    }
+}
+
+static void pvscsi_setup_rings_desc(struct pvscsi_dev *dev)
+{
+    uint64_t state_phys = (uint64_t)(uintptr_t)dev->rings_state;
+    uint64_t req_phys = (uint64_t)(uintptr_t)dev->req_ring;
+    uint64_t cmp_phys = (uint64_t)(uintptr_t)dev->cmp_ring;
+
+    struct pvscsi_cmd_desc_setup_rings setup;
+    uint8_t *s = (uint8_t *)&setup;
+    for (size_t i = 0; i < sizeof(setup); ++i) s[i] = 0;
+    setup.req_ring_num_pages = 1;
+    setup.cmp_ring_num_pages = 1;
+    setup.rings_state_ppn = state_phys >> 12;
+    setup.req_ring_ppns[0] = req_phys >> 12;
+    setup.cmp_ring_ppns[0] = cmp_phys >> 12;
+
+    pvscsi_write_cmd_desc(dev, PVSCSI_CMD_SETUP_RINGS, &setup, sizeof(setup));
+}
+
+static void pvscsi_reset_adapter(struct pvscsi_dev *dev)
+{
+    /* Reset adapter */
+    mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND, PVSCSI_CMD_ADAPTER_RESET);
+
+    /* Zero pages */
+    uint8_t *p = (uint8_t *)dev->rings_state;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+    p = (uint8_t *)dev->req_ring;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+    p = (uint8_t *)dev->cmp_ring;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+
+    dev->rings_state->req_num_entries_log2 = PVSCSI_REQ_RING_ENTRIES_LOG2;
+    dev->rings_state->cmp_num_entries_log2 = PVSCSI_CMP_RING_ENTRIES_LOG2;
+    dev->rings_state->req_prod_idx = 0;
+    dev->rings_state->req_cons_idx = 0;
+    dev->rings_state->cmp_prod_idx = 0;
+    dev->rings_state->cmp_cons_idx = 0;
+
+    pvscsi_setup_rings_desc(dev);
+}
+
+static void pvscsi_abort_and_drain(struct pvscsi_dev *dev, uint64_t context)
+{
+    struct pvscsi_cmd_desc_abort_cmd abort_cmd;
+    abort_cmd.context = context;
+    abort_cmd.target = 0;
+    abort_cmd._pad = 0;
+
+    pvscsi_write_cmd_desc(dev, PVSCSI_CMD_ABORT_CMD, &abort_cmd, sizeof(abort_cmd));
+
+    /* Poll to drain the completion for this aborted context */
+    int drained = 0;
+    for (uint32_t timeout = 0; timeout < 10000000; ++timeout) {
+        if (dev->rings_state->cmp_cons_idx != dev->rings_state->cmp_prod_idx) {
+            uint32_t cmp_cons = dev->rings_state->cmp_cons_idx;
+            struct pvscsi_ring_cmp_desc cmp = dev->cmp_ring[cmp_cons & (PVSCSI_CMP_RING_ENTRIES - 1)];
+            dev->rings_state->cmp_cons_idx = cmp_cons + 1;
+            if (cmp.context == context) {
+                drained = 1;
+                break;
+            }
+        }
+        __asm__ volatile("pause" : : : "memory");
+    }
+
+    if (!drained) {
+        /* If abort did not produce completion within polling limit, fully reset adapter to flush */
+        pvscsi_reset_adapter(dev);
+    }
+}
+
 int pvscsi_init(struct pvscsi_dev *dev)
 {
     if (!dev)
         return -1;
 
     dev->initialized = 0;
+    dev->next_context = 0;
+    for (size_t i = 0; i < sizeof(dev->sense_buf); ++i)
+        dev->sense_buf[i] = 0;
+
     struct pci_device pdev;
     if (pci_find_device(PCI_VENDOR_VMWARE, PCI_DEVICE_PVSCSI, &pdev) != 0)
         return -1;
@@ -35,49 +123,11 @@ int pvscsi_init(struct pvscsi_dev *dev)
     if (!state_ptr || !req_ptr || !cmp_ptr)
         return -2;
 
-    uint64_t state_phys = (uint64_t)(uintptr_t)state_ptr;
-    uint64_t req_phys = (uint64_t)(uintptr_t)req_ptr;
-    uint64_t cmp_phys = (uint64_t)(uintptr_t)cmp_ptr;
-
     dev->rings_state = (struct pvscsi_rings_state *)state_ptr;
     dev->req_ring = (struct pvscsi_ring_req_desc *)req_ptr;
     dev->cmp_ring = (struct pvscsi_ring_cmp_desc *)cmp_ptr;
 
-    /* Zero pages */
-    uint8_t *p = (uint8_t *)dev->rings_state;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
-    p = (uint8_t *)dev->req_ring;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
-    p = (uint8_t *)dev->cmp_ring;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
-
-    dev->rings_state->req_num_entries_log2 = PVSCSI_REQ_RING_ENTRIES_LOG2;
-    dev->rings_state->cmp_num_entries_log2 = PVSCSI_CMP_RING_ENTRIES_LOG2;
-    dev->rings_state->req_prod_idx = 0;
-    dev->rings_state->req_cons_idx = 0;
-    dev->rings_state->cmp_prod_idx = 0;
-    dev->rings_state->cmp_cons_idx = 0;
-
-    /* Reset adapter */
-    mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND, PVSCSI_CMD_ADAPTER_RESET);
-
-    /* Setup rings command */
-    struct pvscsi_cmd_desc_setup_rings setup;
-    uint8_t *s = (uint8_t *)&setup;
-    for (size_t i = 0; i < sizeof(setup); ++i) s[i] = 0;
-    setup.req_ring_num_pages = 1;
-    setup.cmp_ring_num_pages = 1;
-    setup.rings_state_ppn = state_phys >> 12;
-    setup.req_ring_ppns[0] = req_phys >> 12;
-    setup.cmp_ring_ppns[0] = cmp_phys >> 12;
-
-    mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND, PVSCSI_CMD_SETUP_RINGS);
-    for (size_t i = 0; i < sizeof(setup); i += 4) {
-        const uint8_t *src = (const uint8_t *)&setup + i;
-        uint32_t word = (uint32_t)src[0] | ((uint32_t)src[1] << 8) |
-                       ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
-        mmio_write32(dev->mmio_base + PVSCSI_REG_OFFSET_COMMAND_DATA, word);
-    }
+    pvscsi_reset_adapter(dev);
 
     dev->initialized = 1;
     return 0;
@@ -94,8 +144,8 @@ static int pvscsi_scsi_rw(struct pvscsi_dev *dev, uint64_t lba, uint32_t count, 
         return -3;
 
     for (int retry = 0; retry < 3; ++retry) {
-        uint8_t sense_buf[64];
-        for (size_t i = 0; i < sizeof(sense_buf); ++i) sense_buf[i] = 0;
+        for (size_t i = 0; i < sizeof(dev->sense_buf); ++i)
+            dev->sense_buf[i] = 0;
 
         uint32_t prod = dev->rings_state->req_prod_idx;
         uint32_t mask = PVSCSI_REQ_RING_ENTRIES - 1;
@@ -104,11 +154,12 @@ static int pvscsi_scsi_rw(struct pvscsi_dev *dev, uint64_t lba, uint32_t count, 
         uint8_t *r = (uint8_t *)req;
         for (size_t i = 0; i < sizeof(*req); ++i) r[i] = 0;
 
-        req->context = 0x53435349u; /* 'SCSI' */
+        uint64_t current_context = ++dev->next_context;
+        req->context = current_context;
         req->data_addr = (uint64_t)(uintptr_t)buf;
         req->data_len = (uint64_t)count * 512;
-        req->sense_addr = (uint64_t)(uintptr_t)sense_buf;
-        req->sense_len = sizeof(sense_buf);
+        req->sense_addr = (uint64_t)(uintptr_t)dev->sense_buf;
+        req->sense_len = sizeof(dev->sense_buf);
         req->flags = is_write ? PVSCSI_FLAG_CMD_DIR_TODEVICE : PVSCSI_FLAG_CMD_DIR_TOHOST;
 
         /* SCSI READ(10) (0x28) / WRITE(10) (0x2A) */
@@ -140,9 +191,15 @@ static int pvscsi_scsi_rw(struct pvscsi_dev *dev, uint64_t lba, uint32_t count, 
                 uint32_t cmp_cons = dev->rings_state->cmp_cons_idx;
                 struct pvscsi_ring_cmp_desc cmp = dev->cmp_ring[cmp_cons & (PVSCSI_CMP_RING_ENTRIES - 1)];
                 dev->rings_state->cmp_cons_idx = cmp_cons + 1;
+
+                if (cmp.context != current_context) {
+                    /* Discard stale/mismatched completion */
+                    continue;
+                }
+
                 if (cmp.host_status != 0 || cmp.scsi_status != 0) {
                     /* Sense Key 0x06 = UNIT ATTENTION (e.g. Bus Reset). Condition cleared, retry. */
-                    if ((sense_buf[2] & 0x0F) == 0x06) {
+                    if ((dev->sense_buf[2] & 0x0F) == 0x06) {
                         completed = 2; /* Retry */
                         break;
                     }
@@ -156,6 +213,9 @@ static int pvscsi_scsi_rw(struct pvscsi_dev *dev, uint64_t lba, uint32_t count, 
         if (completed == 2)
             continue;
 
+        /* Request timed out before completion: abort or reset and drain to ensure
+         * descriptor and buffer ownership are returned to driver before returning. */
+        pvscsi_abort_and_drain(dev, current_context);
         return -5; /* Timeout */
     }
 

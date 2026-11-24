@@ -16,6 +16,9 @@
 #define PVSCSI_CMD_ADAPTER_RESET           1
 #define PVSCSI_CMD_ISSUE_SCSI              2
 #define PVSCSI_CMD_SETUP_RINGS             3
+#define PVSCSI_CMD_RESET_BUS               4
+#define PVSCSI_CMD_RESET_DEVICE            5
+#define PVSCSI_CMD_ABORT_CMD               6
 
 #define PVSCSI_FLAG_CMD_DIR_NONE           (1u << 2)
 #define PVSCSI_FLAG_CMD_DIR_TOHOST         (1u << 3)
@@ -34,6 +37,13 @@ struct pvscsi_cmd_desc_setup_rings {
     uint64_t req_ring_ppns[PVSCSI_SETUP_RINGS_MAX_NUM_PAGES];
     uint64_t cmp_ring_ppns[PVSCSI_SETUP_RINGS_MAX_NUM_PAGES];
 } __attribute__((packed));
+
+struct pvscsi_cmd_desc_abort_cmd {
+    uint64_t context;
+    uint32_t target;
+    uint32_t _pad;
+} __attribute__((packed));
+_Static_assert(sizeof(struct pvscsi_cmd_desc_abort_cmd) == 16, "pvscsi abort desc size");
 
 struct pvscsi_rings_state {
     uint32_t req_prod_idx;
@@ -82,6 +92,8 @@ struct pvscsi_dev {
     struct pvscsi_rings_state *rings_state;
     struct pvscsi_ring_req_desc *req_ring;
     struct pvscsi_ring_cmp_desc *cmp_ring;
+    uint64_t next_context;
+    uint8_t sense_buf[64] __attribute__((aligned(8)));
     uint8_t initialized;
 };
 

@@ -111,27 +111,41 @@ static void test_vmxnet3(void)
         if (vmxnet3_send_packet(&dev, pkt, 60) != 0)
             boot_stop("STOP vmxnet3 send failed\r\n");
 
-        /* Receive ARP reply */
-        rx_len = 0;
-        if (vmxnet3_receive_packet(&dev, rx_buf, sizeof(rx_buf), &rx_len) != 0)
-            boot_stop("STOP vmxnet3 receive failed\r\n");
+        /* Receive ARP reply with retry & deadline, discarding unrelated broadcast/multicast frames */
+        int got_reply = 0;
+        for (int retry = 0; retry < 3 && !got_reply; ++retry) {
+            if (retry > 0) {
+                if (vmxnet3_send_packet(&dev, pkt, 60) != 0)
+                    boot_stop("STOP vmxnet3 send failed\r\n");
+            }
 
-        if (rx_len < 42)
-            boot_stop("STOP vmxnet3 packet too short\r\n");
+            for (int rx_attempt = 0; rx_attempt < 100; ++rx_attempt) {
+                rx_len = 0;
+                if (vmxnet3_receive_packet(&dev, rx_buf, sizeof(rx_buf), &rx_len) != 0)
+                    break; /* Rx timeout; retry sending if retries remain */
 
-        /* Validate ARP Reply:
-         * EtherType == 0x0806
-         * Opcode == 0x0002 (Reply)
-         * Sender IP == 10.0.2.2
-         */
-        if (rx_buf[12] != 0x08 || rx_buf[13] != 0x06)
-            boot_stop("STOP vmxnet3 ethertype not ARP\r\n");
+                /* Validate whether received frame is the expected ARP Reply:
+                 * Minimum length: 42 bytes (14 Ethernet + 28 ARP)
+                 * EtherType: 0x0806 (ARP)
+                 * Opcode: 0x0002 (Reply)
+                 * Sender IP: 10.0.2.2
+                 * Target IP: 10.0.2.15
+                 */
+                if (rx_len >= 42 &&
+                    rx_buf[12] == 0x08 && rx_buf[13] == 0x06 &&
+                    rx_buf[20] == 0x00 && rx_buf[21] == 0x02 &&
+                    rx_buf[28] == 10 && rx_buf[29] == 0 && rx_buf[30] == 2 && rx_buf[31] == 2 &&
+                    rx_buf[38] == 10 && rx_buf[39] == 0 && rx_buf[40] == 2 && rx_buf[41] == 15) {
+                    got_reply = 1;
+                    break;
+                }
 
-        if (rx_buf[20] != 0x00 || rx_buf[21] != 0x02)
-            boot_stop("STOP vmxnet3 opcode not reply\r\n");
+                /* Discard unrelated broadcast/multicast/other frame and continue */
+            }
+        }
 
-        if (rx_buf[28] != 10 || rx_buf[29] != 0 || rx_buf[30] != 2 || rx_buf[31] != 2)
-            boot_stop("STOP vmxnet3 reply not from peer\r\n");
+        if (!got_reply)
+            boot_stop("STOP vmxnet3 reply not received\r\n");
     }
 
     serial_write("vmxnet3 test send/receive: OK\r\n");
