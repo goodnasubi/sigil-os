@@ -12,6 +12,9 @@ static inline uint32_t mmio_read32(uintptr_t addr)
     return *(volatile uint32_t *)addr;
 }
 
+static int vmxnet3_reset_device(struct vmxnet3_dev *dev);
+static void vmxnet3_quiesce_and_drain(struct vmxnet3_dev *dev, uint32_t send_idx);
+
 int vmxnet3_init(struct vmxnet3_dev *dev)
 {
     if (!dev)
@@ -54,21 +57,11 @@ int vmxnet3_init(struct vmxnet3_dev *dev)
     if (!shared_ptr || !qdesc_ptr || !rings_ptr)
         return -4;
 
-    uint64_t shared_phys = (uint64_t)(uintptr_t)shared_ptr;
-    uint64_t qdesc_phys = (uint64_t)(uintptr_t)qdesc_ptr;
     uint64_t rings_phys = (uint64_t)(uintptr_t)rings_ptr;
 
     dev->shared = (struct vmxnet3_driver_shared *)shared_ptr;
     dev->tx_qdesc = (struct vmxnet3_tx_queue_desc *)qdesc_ptr;
     dev->rx_qdesc = (struct vmxnet3_rx_queue_desc *)((uintptr_t)qdesc_ptr + 256);
-
-    /* Zero memory */
-    uint8_t *p = (uint8_t *)dev->shared;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
-    p = (uint8_t *)dev->tx_qdesc;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
-    p = (uint8_t *)(uintptr_t)rings_phys;
-    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
 
     dev->tx_ring = (struct vmxnet3_tx_desc *)(uintptr_t)rings_phys;
     dev->tx_comp_ring = (struct vmxnet3_tx_comp_desc *)((uintptr_t)rings_phys + 512);
@@ -82,6 +75,34 @@ int vmxnet3_init(struct vmxnet3_dev *dev)
     uint64_t rx_buf_phys = (uint64_t)(uintptr_t)rx_buf_pages;
     for (uint32_t i = 0; i < VMXNET3_RING_SIZE; ++i) {
         dev->rx_buffers[i] = (uint8_t *)(uintptr_t)(rx_buf_phys + (uint64_t)i * 2048);
+    }
+
+    if (vmxnet3_reset_device(dev) != 0)
+        return -6;
+
+    dev->initialized = 1;
+    return 0;
+}
+
+static int vmxnet3_reset_device(struct vmxnet3_dev *dev)
+{
+    /* Reset device */
+    mmio_write32(dev->bar1 + VMXNET3_REG_CMD, VMXNET3_CMD_RESET_DEV);
+
+    uint64_t shared_phys = (uint64_t)(uintptr_t)dev->shared;
+    uint64_t qdesc_phys = (uint64_t)(uintptr_t)dev->tx_qdesc;
+    uint64_t rings_phys = (uint64_t)(uintptr_t)dev->tx_ring;
+
+    /* Zero shared struct, queue descriptors, and rings */
+    uint8_t *p = (uint8_t *)dev->shared;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+    p = (uint8_t *)dev->tx_qdesc;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+    p = (uint8_t *)dev->tx_ring;
+    for (size_t i = 0; i < 4096; ++i) p[i] = 0;
+
+    /* Re-populate Rx ring */
+    for (uint32_t i = 0; i < VMXNET3_RING_SIZE; ++i) {
         dev->rx_ring[i].addr = (uint64_t)(uintptr_t)dev->rx_buffers[i];
         dev->rx_ring[i].len = 1514;
         dev->rx_ring[i].btype = 0; /* head */
@@ -150,8 +171,38 @@ int vmxnet3_init(struct vmxnet3_dev *dev)
     /* Notify Rx producer index to BAR0 */
     mmio_write32(dev->bar0 + VMXNET3_REG_RXPROD, 0);
 
-    dev->initialized = 1;
     return 0;
+}
+
+static void vmxnet3_quiesce_and_drain(struct vmxnet3_dev *dev, uint32_t send_idx)
+{
+    /* Tell device to quiesce transmission so in-flight processing stops */
+    mmio_write32(dev->bar1 + VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
+
+    /* Poll to drain completion for this transmission if published */
+    for (uint32_t timeout = 0; timeout < 10000000; ++timeout) {
+        struct vmxnet3_tx_comp_desc *cd = &dev->tx_comp_ring[dev->tx_comp_idx];
+        if (cd->gen == dev->tx_comp_gen) {
+            uint32_t comp_txd = cd->txd_idx;
+            dev->tx_comp_idx++;
+            if (dev->tx_comp_idx >= VMXNET3_RING_SIZE) {
+                dev->tx_comp_idx = 0;
+                dev->tx_comp_gen ^= 1;
+            }
+            if (comp_txd == send_idx) {
+                break;
+            }
+            continue;
+        }
+        __asm__ volatile("pause" : : : "memory");
+    }
+
+    /* Release buffer ownership from descriptor so device no longer touches caller buffer */
+    dev->tx_ring[send_idx].addr = 0;
+    dev->tx_ring[send_idx].len = 0;
+
+    /* Re-activate device for subsequent operations */
+    mmio_write32(dev->bar1 + VMXNET3_REG_CMD, VMXNET3_CMD_ACTIVATE_DEV);
 }
 
 int vmxnet3_send_packet(struct vmxnet3_dev *dev, const void *buf, uint16_t len)
@@ -161,8 +212,8 @@ int vmxnet3_send_packet(struct vmxnet3_dev *dev, const void *buf, uint16_t len)
     if (!buf || len == 0 || len > 1514)
         return -2;
 
-    uint32_t idx = dev->tx_prod;
-    struct vmxnet3_tx_desc *txd = &dev->tx_ring[idx];
+    uint32_t send_idx = dev->tx_prod;
+    struct vmxnet3_tx_desc *txd = &dev->tx_ring[send_idx];
 
     txd->addr = (uint64_t)(uintptr_t)buf;
     txd->len = len;
@@ -180,30 +231,43 @@ int vmxnet3_send_packet(struct vmxnet3_dev *dev, const void *buf, uint16_t len)
     __asm__ volatile("" : : : "memory");
     txd->gen = dev->tx_gen;
 
-    idx++;
-    if (idx >= VMXNET3_RING_SIZE) {
-        idx = 0;
+    uint32_t next_idx = send_idx + 1;
+    if (next_idx >= VMXNET3_RING_SIZE) {
+        next_idx = 0;
         dev->tx_gen ^= 1;
     }
-    dev->tx_prod = idx;
+    dev->tx_prod = next_idx;
 
     /* Ring Tx doorbell */
     mmio_write32(dev->bar0 + VMXNET3_REG_TXPROD, dev->tx_prod);
 
     /* Poll Tx completion */
+    int completed = 0;
     for (uint32_t timeout = 0; timeout < 10000000; ++timeout) {
         struct vmxnet3_tx_comp_desc *cd = &dev->tx_comp_ring[dev->tx_comp_idx];
         if (cd->gen == dev->tx_comp_gen) {
+            uint32_t comp_txd = cd->txd_idx;
             dev->tx_comp_idx++;
             if (dev->tx_comp_idx >= VMXNET3_RING_SIZE) {
                 dev->tx_comp_idx = 0;
                 dev->tx_comp_gen ^= 1;
             }
-            return 0;
+            if (comp_txd != send_idx) {
+                /* Discard stale/mismatched completion */
+                continue;
+            }
+            completed = 1;
+            break;
         }
         __asm__ volatile("pause" : : : "memory");
     }
 
+    if (completed)
+        return 0;
+
+    /* Transmission timed out before completion: quiesce and drain to ensure
+     * descriptor and buffer ownership are returned to caller before returning. */
+    vmxnet3_quiesce_and_drain(dev, send_idx);
     return -3; /* Tx timeout */
 }
 
