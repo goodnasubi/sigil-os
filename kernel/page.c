@@ -9,13 +9,36 @@ struct mem_range {
     uint64_t end;
 };
 
-static uint64_t free_page_stack[MAX_MANAGED_PAGES];
-static uint64_t free_stack_top = 0;
+static uint64_t managed_pages[MAX_MANAGED_PAGES];
+static uint8_t page_allocated[MAX_MANAGED_PAGES];
 static uint64_t total_managed_pages = 0;
 static uint64_t allocated_pages = 0;
 
 static struct mem_range reserved_ranges[MAX_RESERVED_RANGES];
 static uint32_t reserved_range_count = 0;
+
+static void sort_managed_pages(uint64_t arr[], int64_t low, int64_t high)
+{
+    if (low >= high)
+        return;
+    uint64_t pivot = arr[high];
+    int64_t i = low - 1;
+    for (int64_t j = low; j < high; ++j) {
+        if (arr[j] <= pivot) {
+            i++;
+            uint64_t tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+        }
+    }
+    uint64_t tmp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = tmp;
+    int64_t p = i + 1;
+
+    sort_managed_pages(arr, low, p - 1);
+    sort_managed_pages(arr, p + 1, high);
+}
 
 static void add_reserved_range(uint64_t start, uint64_t end)
 {
@@ -46,7 +69,6 @@ static int range_overlaps_reserved(uint64_t start, uint64_t end)
 
 void page_init(const struct boot_info *info)
 {
-    free_stack_top = 0;
     total_managed_pages = 0;
     allocated_pages = 0;
     reserved_range_count = 0;
@@ -88,45 +110,106 @@ void page_init(const struct boot_info *info)
         if (desc->type == EFI_CONVENTIONAL_MEMORY) {
             uint64_t page_addr = desc->physical_start;
             for (uint64_t p = 0; p < desc->number_of_pages; ++p, page_addr += PAGE_SIZE) {
-                if (free_stack_top >= MAX_MANAGED_PAGES)
+                if (total_managed_pages >= MAX_MANAGED_PAGES)
                     break;
                 if (!range_overlaps_reserved(page_addr, page_addr + PAGE_SIZE)) {
-                    free_page_stack[free_stack_top++] = page_addr;
+                    managed_pages[total_managed_pages] = page_addr;
+                    page_allocated[total_managed_pages] = 0;
                     total_managed_pages++;
                 }
             }
         }
-        if (free_stack_top >= MAX_MANAGED_PAGES)
+        if (total_managed_pages >= MAX_MANAGED_PAGES)
             break;
     }
 
     if (total_managed_pages == 0)
         boot_stop("STOP no conventional memory pages\r\n");
+
+    sort_managed_pages(managed_pages, 0, (int64_t)total_managed_pages - 1);
+}
+
+void *page_alloc_contiguous(uint64_t count)
+{
+    if (count == 0 || count > total_managed_pages)
+        return 0;
+
+    for (uint64_t i = 0; i + count <= total_managed_pages; ++i) {
+        if (page_allocated[i])
+            continue;
+
+        int ok = 1;
+        for (uint64_t j = 0; j < count; ++j) {
+            if (page_allocated[i + j]) {
+                ok = 0;
+                i += j;
+                break;
+            }
+            if (j > 0 && managed_pages[i + j] != managed_pages[i + j - 1] + PAGE_SIZE) {
+                ok = 0;
+                i += j - 1;
+                break;
+            }
+        }
+
+        if (ok) {
+            for (uint64_t j = 0; j < count; ++j) {
+                page_allocated[i + j] = 1;
+                uint64_t *p = (uint64_t *)(uintptr_t)managed_pages[i + j];
+                for (uint32_t k = 0; k < PAGE_SIZE / sizeof(uint64_t); ++k)
+                    p[k] = 0;
+            }
+            allocated_pages += count;
+            return (void *)(uintptr_t)managed_pages[i];
+        }
+    }
+    return 0;
+}
+
+void page_free_contiguous(void *ptr, uint64_t count)
+{
+    if (!ptr || count == 0)
+        return;
+
+    uint64_t addr = (uint64_t)(uintptr_t)ptr;
+    int64_t low = 0;
+    int64_t high = (int64_t)total_managed_pages - 1;
+    int64_t found = -1;
+    while (low <= high) {
+        int64_t mid = low + (high - low) / 2;
+        if (managed_pages[mid] == addr) {
+            found = mid;
+            break;
+        } else if (managed_pages[mid] < addr) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    if (found < 0)
+        boot_stop("STOP invalid page_free address\r\n");
+
+    for (uint64_t j = 0; j < count; ++j) {
+        uint64_t idx = (uint64_t)found + j;
+        if (idx < total_managed_pages) {
+            if (page_allocated[idx]) {
+                page_allocated[idx] = 0;
+                if (allocated_pages > 0)
+                    allocated_pages--;
+            }
+        }
+    }
 }
 
 void *page_alloc(void)
 {
-    if (free_stack_top == 0)
-        return 0;
-    uint64_t addr = free_page_stack[--free_stack_top];
-    allocated_pages++;
-    /* Zero the page before returning */
-    uint64_t *p = (uint64_t *)(uintptr_t)addr;
-    for (uint32_t i = 0; i < PAGE_SIZE / sizeof(uint64_t); ++i)
-        p[i] = 0;
-    return (void *)(uintptr_t)addr;
+    return page_alloc_contiguous(1);
 }
 
 void page_free(void *ptr)
 {
-    if (!ptr)
-        return;
-    uint64_t addr = (uint64_t)(uintptr_t)ptr;
-    if (free_stack_top < MAX_MANAGED_PAGES) {
-        free_page_stack[free_stack_top++] = addr;
-        if (allocated_pages > 0)
-            allocated_pages--;
-    }
+    page_free_contiguous(ptr, 1);
 }
 
 uint64_t page_total_managed(void)
@@ -136,7 +219,7 @@ uint64_t page_total_managed(void)
 
 uint64_t page_free_count(void)
 {
-    return free_stack_top;
+    return total_managed_pages > allocated_pages ? total_managed_pages - allocated_pages : 0;
 }
 
 uint64_t page_allocated_count(void)
@@ -181,22 +264,30 @@ void test_page_reserved_excluded(void)
 
 void test_page_oom(void)
 {
-    uint64_t saved_top = free_stack_top;
-    /* Temporarily exhaust the free page stack */
-    free_stack_top = 0;
+    /* Temporarily mark all pages as allocated */
+    uint64_t saved_allocated = allocated_pages;
+    for (uint64_t i = 0; i < total_managed_pages; ++i) {
+        page_allocated[i] = 1;
+    }
+    allocated_pages = total_managed_pages;
 
     void *oom_page = page_alloc();
     if (oom_page != 0)
         boot_stop("STOP page test: expected NULL on OOM\r\n");
 
-    /* Restore free page stack */
-    free_stack_top = saved_top;
+    /* Restore free state */
+    for (uint64_t i = 0; i < total_managed_pages; ++i) {
+        page_allocated[i] = 0;
+    }
+    allocated_pages = 0;
 
     /* Verify allocation succeeds again */
     void *recovered_page = page_alloc();
     if (!recovered_page)
         boot_stop("STOP page test: recovery allocation failed\r\n");
     page_free(recovered_page);
+
+    allocated_pages = saved_allocated;
 
     serial_write("page test oom handled=OK\r\n");
 }

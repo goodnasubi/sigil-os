@@ -37,6 +37,8 @@ struct efi_memory_descriptor {
 void page_init(const struct boot_info *info);
 void *page_alloc(void);
 void page_free(void *ptr);
+void *page_alloc_contiguous(uint64_t count);
+void page_free_contiguous(void *ptr, uint64_t count);
 uint64_t page_total_managed(void);
 uint64_t page_free_count(void);
 uint64_t page_allocated_count(void);
