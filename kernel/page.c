@@ -19,25 +19,30 @@ static uint32_t reserved_range_count = 0;
 
 static void sort_managed_pages(uint64_t arr[], int64_t low, int64_t high)
 {
-    if (low >= high)
-        return;
-    uint64_t pivot = arr[high];
-    int64_t i = low - 1;
-    for (int64_t j = low; j < high; ++j) {
-        if (arr[j] <= pivot) {
-            i++;
-            uint64_t tmp = arr[i];
-            arr[i] = arr[j];
-            arr[j] = tmp;
+    while (low < high) {
+        uint64_t pivot = arr[high];
+        int64_t i = low - 1;
+        for (int64_t j = low; j < high; ++j) {
+            if (arr[j] <= pivot) {
+                i++;
+                uint64_t tmp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = tmp;
+            }
+        }
+        uint64_t tmp = arr[i + 1];
+        arr[i + 1] = arr[high];
+        arr[high] = tmp;
+        int64_t p = i + 1;
+
+        if (p - low < high - p) {
+            sort_managed_pages(arr, low, p - 1);
+            low = p + 1;
+        } else {
+            sort_managed_pages(arr, p + 1, high);
+            high = p - 1;
         }
     }
-    uint64_t tmp = arr[i + 1];
-    arr[i + 1] = arr[high];
-    arr[high] = tmp;
-    int64_t p = i + 1;
-
-    sort_managed_pages(arr, low, p - 1);
-    sort_managed_pages(arr, p + 1, high);
 }
 
 static void add_reserved_range(uint64_t start, uint64_t end)
