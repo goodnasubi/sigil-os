@@ -3,7 +3,7 @@
 - 実施日: 2026-11-24 JST（この環境で実施した範囲）
 - 実行環境: Claude Code（クラウド、Ubuntu 24.04 x86-64、QEMU 8.2.2、EDK II OVMF 2024.02-2）
 - 依存する Sigil の基準 SHA: `75d0d3ae6120f1eed2d3f36de30fbd28ed16051e`（Sigil main の `HEAD` を確認。P6-3 から変化なし）
-- 対象とする実機の構成: [p6-4-board.md](p6-4-board.md)（要件として固定。**機種は未決**）
+- 対象とする実機の構成: [p6-4-board.md](p6-4-board.md)（要件として固定。機種は選定済みだが、**実機は未入手**）
 
 ## 結論（先に）
 
