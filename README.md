@@ -1,6 +1,8 @@
 # sigil-os
 Sigil P6 の OS 本体・対象別プラットフォーム層・OS のビルド／起動テストを置くリポジトリ（ADR 0054 決定6）
 
+- [sigil-os の違いと優位性（図解）](docs/sigil-os-overview.html)
+
 ## P6-1 の起動
 - [起動契約と ESXi での試験手順](docs/boot-contract.md)
 - [P6-1 検証記録と Sigil 側の依存条件](docs/p6-1-verification.md)
