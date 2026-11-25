@@ -17,9 +17,11 @@ KERNEL_OBJS := $(BUILD)/kernel_main.o \
 	$(BUILD)/kernel_pci.o \
 	$(BUILD)/kernel_pvscsi.o \
 	$(BUILD)/kernel_vmxnet3.o \
-	$(BUILD)/kernel_device_test.o
+	$(BUILD)/kernel_device_test.o \
+	$(BUILD)/kernel_uart.o \
+	$(BUILD)/kernel_board_test.o
 
-.PHONY: all images iso check check-probe check-boot check-kernel check-p6-2 check-p6-3 check-sigil clean
+.PHONY: all images iso check check-probe check-boot check-kernel check-p6-2 check-p6-3 check-p6-4 check-sigil usb clean
 all: $(BUILD)/loader.efi $(BUILD)/kernel.elf $(BUILD)/sigil-os.iso
 
 $(BUILD):
@@ -50,7 +52,7 @@ $(BUILD)/probe.elf: $(BUILD)/probe.o tests/probe.ld
 check-probe: $(BUILD)/probe.elf
 	tests/check-probe.sh $<
 
-$(BUILD)/kernel_main.o: kernel/main.c boot/contract.h boot/serial.h kernel/page.h kernel/interrupt.h kernel/alloc.h kernel/core.h kernel/device_test.h | $(BUILD)
+$(BUILD)/kernel_main.o: kernel/main.c boot/contract.h boot/serial.h kernel/page.h kernel/interrupt.h kernel/alloc.h kernel/core.h kernel/device_test.h kernel/board_test.h | $(BUILD)
 	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
 
 $(BUILD)/kernel_page.o: kernel/page.c kernel/page.h boot/contract.h boot/serial.h | $(BUILD)
@@ -75,6 +77,12 @@ $(BUILD)/kernel_pvscsi.o: kernel/pvscsi.c kernel/pvscsi.h kernel/pci.h kernel/pa
 	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
 
 $(BUILD)/kernel_vmxnet3.o: kernel/vmxnet3.c kernel/vmxnet3.h kernel/pci.h kernel/page.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_uart.o: kernel/uart.c kernel/uart.h boot/serial.h | $(BUILD)
+	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
+
+$(BUILD)/kernel_board_test.o: kernel/board_test.c kernel/board_test.h kernel/uart.h kernel/page.h kernel/interrupt.h boot/serial.h | $(BUILD)
 	$(CC) $(KERNEL_CFLAGS) -c $< -o $@
 
 $(BUILD)/kernel_device_test.o: kernel/device_test.c kernel/device_test.h kernel/pci.h kernel/pvscsi.h kernel/vmxnet3.h kernel/alloc.h boot/serial.h | $(BUILD)
@@ -106,7 +114,15 @@ check-p6-2: $(BUILD)/sigil-os.iso check-sigil
 check-p6-3: $(BUILD)/sigil-os.iso check-sigil
 	tests/check-p6-3.sh $(BUILD)
 
-check: check-boot check-kernel check-p6-2 check-p6-3 check-sigil
+$(BUILD)/sigil-os-usb.img: $(BUILD)/loader.efi $(BUILD)/kernel.elf check-kernel
+	boot/make-usb.sh $(BUILD)/loader.efi $(BUILD)/kernel.elf $@
+
+usb: $(BUILD)/sigil-os-usb.img
+
+check-p6-4: $(BUILD)/sigil-os-usb.img check-sigil
+	tests/check-p6-4.sh $(BUILD)
+
+check: check-boot check-kernel check-p6-2 check-p6-3 check-p6-4 check-sigil
 
 iso: $(BUILD)/loader.efi
 	test -n "$(KERNEL_ELF)" && test -f "$(KERNEL_ELF)"
